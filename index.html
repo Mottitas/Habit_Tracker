@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Habit Tracker</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+
+  <style>
+    /* Tema (variables) */
+    :root{
+      --bg: #f2f4f6;
+      --panel: #ffffff;
+      --muted: #6b7280;
+      --text: #0f1724;
+      --blue: #2563eb;
+      --green: #10b981;
+      --red: #ef4444;
+      --shadow: rgba(2,6,23,0.08);
+    }
+    .dark {
+      --bg: #0f1724;
+      --panel: #0b1220;
+      --muted: #93a4b8;
+      --text: #e6eef8;
+      --blue: #2563eb;
+      --green: #10b981;
+      --red: #ef4444;
+      --shadow: rgba(2,6,23,0.6);
+    }
+
+    /* Base */
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial; background:var(--bg); color:var(--text); transition:background .32s,color .32s}
+    .root { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:36px; box-sizing:border-box; }
+
+    /* Contenedor compacto centrado (ese estilo que querías) */
+    .box { width:460px; max-width:92vw; display:block; }
+
+    /* Header */
+    .header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:12px; }
+    .title { display:flex; align-items:center; gap:10px; font-weight:700; font-size:18px; }
+    .title .emoji { font-size:18px; }
+
+    .theme-pill {
+      background: rgba(16,24,40,0.06);
+      border-radius:10px;
+      padding:6px 10px;
+      font-size:13px;
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      cursor:pointer;
+      box-shadow: 0 2px 6px var(--shadow);
+      transition: transform .12s, background .2s;
+      user-select:none;
+    }
+    .theme-pill:hover{ transform: translateY(-2px) }
+
+    /* Form */
+    .form-row { display:flex; gap:10px; margin-bottom:12px; align-items:center; }
+    .input {
+      flex:1;
+      height:40px;
+      border-radius:8px;
+      padding:8px 12px;
+      border:0;
+      outline:0;
+      box-shadow: 0 2px 8px var(--shadow);
+      background:var(--panel);
+      color:var(--text);
+      font-size:14px;
+    }
+    .btn-add {
+      width:44px;
+      height:40px;
+      border-radius:8px;
+      background:var(--blue);
+      color:white;
+      border:0;
+      font-size:20px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      box-shadow:0 6px 12px rgba(37,99,235,0.12);
+      transition: transform .12s, box-shadow .12s;
+    }
+    .btn-add:active{ transform:scale(.98) }
+
+    /* Lista */
+    .list { display:flex; flex-direction:column; gap:10px; }
+    .card {
+      background:var(--panel);
+      padding:12px 14px;
+      border-radius:10px;
+      box-shadow: 0 6px 18px var(--shadow);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      animation: fadeIn .18s ease;
+    }
+    @keyframes fadeIn { from { opacity:0; transform: translateY(6px) } to {opacity:1; transform: translateY(0)} }
+
+    .card-left { display:flex; flex-direction:column; gap:6px; }
+    .habit-name { font-weight:600; font-size:14px; }
+    .habit-meta { font-size:12px; color:var(--muted) }
+
+    .actions { display:flex; gap:8px; align-items:center; }
+
+    .icon-btn {
+      width:36px; height:36px; border-radius:8px; border:0; display:inline-grid; place-items:center; cursor:pointer;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.06); transition: transform .12s;
+    }
+    .icon-btn:active{ transform:scale(.96) }
+
+    .btn-check { background: var(--green); color: white; } /* green */
+    .btn-delete { background: var(--red); color: white; } /* red */
+
+    svg { width:16px; height:16px; display:block }
+
+    /* Modal (estilo pequeño, integrado) */
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,0.45);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:1200;
+    }
+    .confirm-box {
+      width: 320px;
+      max-width: 93%;
+      background: var(--panel);
+      color: var(--text);
+      padding: 14px;
+      border-radius: 10px;
+      box-shadow: 0 12px 30px rgba(2,6,23,0.4);
+      text-align:center;
+      transform: translateY(6px);
+      animation: modalIn .18s ease forwards;
+    }
+    @keyframes modalIn { from { opacity:0; transform: translateY(10px) scale(.98)} to {opacity:1; transform: translateY(0) scale(1)} }
+    .confirm-text { margin-bottom:12px; font-weight:600 }
+    .confirm-actions { display:flex; gap:10px; justify-content:center; }
+
+    .btn-cancel { padding:8px 12px; border-radius:8px; background: rgba(16,24,40,0.06); border:0; cursor:pointer; }
+    .btn-confirm { padding:8px 12px; border-radius:8px; background: var(--red); color:white; border:0; cursor:pointer; }
+
+    /* Responsive: mantener compacto en móvil */
+    @media (max-width:520px) {
+      .box { width:92vw; }
+      .title { font-size:16px }
+      .theme-pill{ padding:5px 8px; font-size:12px }
+      .confirm-box { width: 90%; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="root">
+    <div class="box" :class="{dark: theme==='dark'}">
+      <!-- Header -->
+      <div class="header">
+        <div class="title">
+          <span class="emoji">📅</span>
+          <span>Habit Tracker</span>
+        </div>
+
+        <div class="theme-pill" @click="toggleTheme" :title="theme === 'dark' ? 'Cambiar a claro' : 'Cambiar a oscuro'">
+          <span v-if="theme==='light'">🌞</span>
+          <span v-else>🌙</span>
+          <strong style="font-weight:600; font-size:13px">{{ theme === 'light' ? 'Claro' : 'Oscuro' }}</strong>
+        </div>
+      </div>
+
+      <!-- Form -->
+      <div class="form-row">
+        <input class="input" v-model="newHabit" placeholder="Agregar hábito..." @keyup.enter="addHabit" />
+        <button class="btn-add" @click="addHabit" aria-label="Agregar">＋</button>
+      </div>
+
+      <!-- Lista -->
+      <div class="list">
+        <div v-if="!habits.length" class="card" style="justify-content:center; color:var(--muted)">No hay hábitos — agrega uno</div>
+
+        <div class="card" v-for="h in habits" :key="h.id">
+          <div class="card-left">
+            <div class="habit-name">{{ h.name }}</div>
+            <div class="habit-meta">Completado: {{ h.count || 0 }} veces</div>
+          </div>
+
+          <div class="actions">
+            <!-- Botón: ahora suma 1 al contador por cada clic -->
+            <button :class="['icon-btn', 'btn-check']" @click="addCompletion(h.id)" title="Agregar completado">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </button>
+
+            <!-- Botón eliminar (abre modal) -->
+            <button class="icon-btn btn-delete" @click="openConfirmDelete(h.id)" title="Eliminar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+                <path d="M10 11v6"></path>
+                <path d="M14 11v6"></path>
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: aparece encima (controlado por Vue) -->
+    <div v-if="showConfirm" class="confirm-overlay">
+      <div class="confirm-box">
+        <div class="confirm-text">¿Eliminar este hábito?</div>
+        <div class="confirm-actions">
+          <button class="btn-cancel" @click="cancelDelete">Cancelar</button>
+          <button class="btn-confirm" @click="confirmDelete">Eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const { createApp } = Vue;
+
+createApp({
+  data(){
+    return {
+      newHabit: '',
+      habits: [],
+      theme: 'light', // 'light' or 'dark'
+      showConfirm: false,
+      pendingDeleteId: null,
+      STORAGE_KEY: 'habit-tracker-v1',
+      THEME_KEY: 'habit-tracker-theme'
+    }
+  },
+  created(){
+    // cargar hábitos desde localStorage
+    try{
+      const raw = localStorage.getItem(this.STORAGE_KEY)
+      if (raw) this.habits = JSON.parse(raw)
+    }catch(e){ this.habits = [] }
+
+    // cargar theme
+    const t = localStorage.getItem(this.THEME_KEY)
+    this.theme = (t === 'dark' || t === 'light') ? t : 'light'
+    this.applyTheme()
+  },
+  watch: {
+    habits: {
+      deep: true,
+      handler(nv){
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(nv))
+      }
+    },
+    theme(nv){
+      localStorage.setItem(this.THEME_KEY, nv)
+      this.applyTheme()
+    }
+  },
+  methods:{
+    addHabit(){
+      const name = (this.newHabit || '').trim()
+      if(!name) return
+      const id = Date.now().toString(36) + Math.random().toString(36).slice(2,6)
+      // inicializar count = 0
+      this.habits.unshift({ id, name, createdAt: new Date().toISOString(), history: {}, count: 0 })
+      this.newHabit = ''
+    },
+    openConfirmDelete(id){
+      this.pendingDeleteId = id
+      this.showConfirm = true
+    },
+    cancelDelete(){
+      this.pendingDeleteId = null
+      this.showConfirm = false
+    },
+    confirmDelete(){
+      if(!this.pendingDeleteId) return
+      this.habits = this.habits.filter(h => h.id !== this.pendingDeleteId)
+      this.pendingDeleteId = null
+      this.showConfirm = false
+    },
+    /* NUEVA FUNCIÓN: suma 1 al contador cada vez que se clickea */
+    addCompletion(id){
+      const habit = this.habits.find(h => h.id === id)
+      if(!habit){
+        return
+      }
+      habit.count = (habit.count || 0) + 1
+      // actualizar array para activar watcher y persistir
+      this.habits = [...this.habits]
+    },
+    toggleTheme(){
+      this.theme = (this.theme === 'dark') ? 'light' : 'dark'
+    },
+    applyTheme(){
+      if(this.theme === 'dark') document.documentElement.classList.add('dark')
+      else document.documentElement.classList.remove('dark')
+    }
+  }
+}).mount('#app')
+</script>
+</body>
+</html>
